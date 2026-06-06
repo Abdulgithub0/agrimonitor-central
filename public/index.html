@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriMonitor Central</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="logo">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            AgriMonitor Central
+        </div>
+
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+            <button class="tab-btn" data-tab="trees">Tree Analyser</button>
+        </nav>
+
+        <div class="header-controls">
+            <div class="usage-widget" id="usageWidget" title="API usage this billing period">
+                <div class="usage-row">
+                    <span class="usage-label">API</span>
+                    <div class="usage-track"><div class="usage-fill" id="usageFill"></div></div>
+                    <span class="usage-text" id="usageText">-</span>
+                </div>
+                <div class="usage-row">
+                    <span class="usage-label">AI</span>
+                    <div class="usage-track"><div class="usage-fill ai" id="aiUsageFill"></div></div>
+                    <span class="usage-text" id="aiUsageText">-</span>
+                </div>
+            </div>
+
+            <label class="ai-toggle-wrap" title="Use 1 AI request per location to get Gemini farming insights">
+                <input type="checkbox" id="aiToggle">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                <span class="toggle-label">AI Insights</span>
+            </label>
+
+            <button class="btn ghost-btn" id="geoDetectBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+                Auto-Detect
+            </button>
+            <button class="btn primary-btn" id="addFarmBtn">+ Add Farm</button>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="app-main">
+
+        <!-- Dashboard tab -->
+        <section class="tab-content active" id="tab-dashboard">
+            <div class="farm-grid" id="farmGrid"></div>
+        </section>
+
+        <!-- Tree Analyser tab -->
+        <section class="tab-content" id="tab-trees">
+            <div class="trees-layout">
+
+                <!-- Upload panel -->
+                <div class="upload-panel">
+                    <div class="panel-header">
+                        <h2>Tree &amp; Canopy Analyser</h2>
+                        <div class="quota-badge" id="quotaBadge">Loading quota…</div>
+                    </div>
+
+                    <div class="dropzone" id="dropzone">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-4 4 4"/><path d="M3 15l4 4 4-4 4 4 4-4"/></svg>
+                        <p>Drop aerial / drone image here</p>
+                        <p class="hint">or <span class="link">click to browse</span>-JPEG, PNG, WebP up to 20 MB</p>
+                        <input type="file" id="treeImageInput" accept="image/jpeg,image/png,image/webp">
+                    </div>
+
+                    <div class="upload-preview hidden" id="uploadPreview">
+                        <img id="previewImg" src="" alt="Preview">
+                        <button class="clear-preview" id="clearPreview" title="Remove image">×</button>
+                    </div>
+
+                    <div class="upload-meta">
+                        <input type="text" id="analysisCounty" placeholder="County (optional)">
+                        <input type="number" id="analysisAcres" step="0.1" min="0" placeholder="Land acres (optional)">
+                        <input type="text" id="analysisNotes" placeholder="Notes (optional)">
+                    </div>
+
+                    <button class="btn primary-btn full-width" id="analyzeBtn" disabled>Analyze Trees</button>
+                </div>
+
+                <!-- Results panel (hidden until analysis completes) -->
+                <div class="results-panel hidden" id="resultsPanel">
+                    <h2>Analysis Results</h2>
+                    <div class="images-comparison">
+                        <div class="img-box">
+                            <h4>Original</h4>
+                            <img id="originalImg" src="" alt="Original image">
+                        </div>
+                        <div class="img-box">
+                            <h4>Annotated</h4>
+                            <img id="overlayImg" src="" alt="Annotated overlay">
+                        </div>
+                    </div>
+                    <div class="stats-grid" id="statsGrid"></div>
+                    <div class="obs-recs" id="obsRecs"></div>
+                </div>
+            </div>
+
+            <!-- History -->
+            <div class="history-section">
+                <div class="history-header">
+                    <h3>Recent Analyses</h3>
+                    <button class="btn ghost-btn sm" id="refreshHistoryBtn">Refresh</button>
+                </div>
+                <div class="history-list" id="historyList">
+                    <p class="empty-state">No analyses yet.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Add Farm modal -->
+    <div class="modal-overlay hidden" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Add Farm Location</h2>
+                <button class="modal-close" id="modalClose">×</button>
+            </div>
+            <form id="addFarmForm" class="modal-form" novalidate>
+                <div class="form-group">
+                    <label for="farmName">Farm Name</label>
+                    <input type="text" id="farmName" placeholder="e.g. My Thika Farm" required autocomplete="off">
+                </div>
+
+                <div class="form-group">
+                    <label>Location</label>
+                    <button type="button" class="btn ghost-btn full-width" id="gpsPickBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+                        Use My GPS Location
+                    </button>
+                </div>
+
+                <div class="loc-divider"><span>or search</span></div>
+
+                <div class="form-group search-wrap">
+                    <input type="text" id="locationSearch" placeholder="Search farm area, village or town…" autocomplete="off">
+                    <div class="search-results hidden" id="searchResults"></div>
+                </div>
+
+                <div class="selected-loc hidden" id="selectedLoc">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span id="selectedLocText"></span>
+                    <button type="button" class="clear-loc" id="clearLoc">×</button>
+                </div>
+
+                <input type="hidden" id="farmLat">
+                <input type="hidden" id="farmLon">
+
+                <div class="modal-actions">
+                    <button type="button" class="btn ghost-btn" id="cancelModal">Cancel</button>
+                    <button type="submit" class="btn primary-btn" id="addFarmSubmit" disabled>Add Farm</button>
+                </div>
+            </form>
+            <p class="osm-attr">Location search © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</p>
+        </div>
+    </div>
+
+    <!-- Full-screen loading overlay -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p id="loadingText">Loading weather data…</p>
+    </div>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>
